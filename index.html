@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>生产规划计算器</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
+      h1 {
+        font-size: 24px;
+        margin-bottom: 20px;
+      }
+      #resource-options {
+        margin-bottom: 20px;
+      }
+      label {
+        cursor: pointer;
+      }
+      input[type="radio"] {
+        margin-right: 5px;
+      }
+      select,
+      input[type="number"],
+      button {
+        margin-right: 10px;
+        padding: 5px;
+        font-size: 16px;
+      }
+      ul {
+        list-style-type: none;
+        padding: 0;
+      }
+      ul li {
+        margin-bottom: 5px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      table,
+      th,
+      td {
+        border: 1px solid black;
+      }
+      th,
+      td {
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>生产规划计算器</h1>
+
+    <div id="resource-options"></div>
+
+    <label for="facility">选择设施:</label>
+    <select id="facility"></select>
+    <label for="quantity">输入数量:</label>
+    <input type="number" id="quantity" value="1" />
+    <button onclick="calculate()">计算</button>
+
+    <h2>需求设施:</h2>
+    <table id="resultTable">
+      <thead>
+        <tr>
+          <th>建筑名</th>
+          <th>数量</th>
+          <th>原始小数</th>
+        </tr>
+      </thead>
+      <tbody id="resultBody"></tbody>
+    </table>
+
+    <script>
+      const facilities = {
+        house_level_1: {
+          name: "1级房屋",
+          output: [{ resource: "population", amount: 24 }],
+          input: { apple: 1, water: 1, wood_furniture: 1 },
+          time: 50,
+        },
+        house_level_2: {
+          name: "2级房屋",
+          output: [{ resource: "population", amount: 108 }],
+          input: { juice: 1, bread: 1, paper: 1, leather_furniture: 1 },
+          time: 50,
+        },
+        house_level_3: {
+          name: "3级房屋",
+          output: [{ resource: "population", amount: 330 }],
+          input: { milk: 1, sandwich: 1, book: 1, luxury_furniture: 1 },
+          time: 50,
+        },
+        water_well: {
+          name: "水井",
+          output: [{ resource: "water", amount: 1 }],
+          input: {},
+          time: 7,
+        },
+        water_pump: {
+          name: "水泵",
+          output: [{ resource: "water", amount: 3 }],
+          input: { bread: 1 },
+          time: 5,
+        },
+        seawater_evaporator: {
+          name: "海水蒸发器",
+          output: [{ resource: "water", amount: 2 }],
+          input: { coal: 1 },
+          time: 20,
+        },
+        apple_farm: {
+          name: "苹果农场",
+          output: [{ resource: "apple", amount: 2 }],
+          input: { water: 1 },
+          time: 10,
+        },
+        juice_factory: {
+          name: "果汁厂",
+          output: [{ resource: "juice", amount: 2 }],
+          input: { apple: 1, wood_plank: 1 },
+          time: 15,
+        },
+        wheat_farm: {
+          name: "小麦农场",
+          output: [{ resource: "wheat", amount: 2 }],
+          input: { water: 1 },
+          time: 10,
+        },
+        bakery: {
+          name: "面包坊",
+          output: [{ resource: "bread", amount: 2 }],
+          input: { wheat: 2, coal: 1 },
+          time: 20,
+        },
+        cow_farm: {
+          name: "奶牛农场",
+          output: [{ resource: "cow", amount: 2 }],
+          input: { wheat: 1, water: 1 },
+          time: 15,
+        },
+        slaughterhouse: {
+          name: "屠宰场",
+          output: [{ resource: "meat", amount: 2 }],
+          input: { cow: 1, iron_tool: 1 },
+          time: 20,
+        },
+        milk_factory: {
+          name: "牛奶工厂",
+          output: [{ resource: "milk", amount: 2 }],
+          input: { cow: 1, glass: 1 },
+          time: 20,
+        },
+        restaurant: {
+          name: "餐厅",
+          output: [{ resource: "sandwich", amount: 2 }],
+          input: { bread: 1, meat: 1 },
+          time: 20,
+        },
+        quarry: {
+          name: "采石场",
+          output: [{ resource: "stone", amount: 2 }],
+          input: { apple: 1 },
+          time: 20,
+        },
+        stone_mine: {
+          name: "石矿",
+          output: [{ resource: "stone", amount: 3 }],
+          input: { bread: 1 },
+          time: 10,
+        },
+        coal_pit: {
+          name: "采煤场",
+          output: [{ resource: "coal", amount: 2 }],
+          input: { apple: 1 },
+          time: 20,
+        },
+        coal_mine: {
+          name: "煤矿",
+          output: [{ resource: "coal", amount: 3 }],
+          input: { bread: 1 },
+          time: 10,
+        },
+        iron_pit: {
+          name: "采铁场",
+          output: [{ resource: "iron", amount: 2 }],
+          input: { bread: 1 },
+          time: 20,
+        },
+        iron_mine: {
+          name: "铁矿",
+          output: [{ resource: "iron", amount: 3 }],
+          input: { bread: 1 },
+          time: 10,
+        },
+        sand_pit: {
+          name: "集沙厂",
+          output: [{ resource: "sand", amount: 1 }],
+          input: { juice: 1 },
+          time: 20,
+        },
+        diamond_mine: {
+          name: "钻石矿",
+          output: [{ resource: "diamond", amount: 3 }],
+          input: { meat: 1, steel_tool: 1 },
+          time: 10,
+        },
+
+        forest_camp: {
+          name: "林场",
+          output: [{ resource: "wood", amount: 1 }],
+          input: { water: 1 },
+          time: 10,
+        },
+        lumber_mill: {
+          name: "伐木场",
+          output: [{ resource: "log", amount: 1 }],
+          input: { apple: 1, wood: 1 },
+          time: 15,
+        },
+        sawmill: {
+          name: "锯木厂",
+          output: [{ resource: "wood_plank", amount: 2 }],
+          input: { log: 1 },
+          time: 10,
+        },
+        carpenter_workshop: {
+          name: "木匠工坊",
+          output: [{ resource: "wood_plank", amount: 2 }],
+          input: { wood_plank: 1, stone_tool: 1 },
+          time: 25,
+        },
+        charcoal_factory: {
+          name: "制炭厂",
+          output: [{ resource: "coal", amount: 2 }],
+          input: { apple: 1, log: 1 },
+          time: 15,
+        },
+        wood_factory: {
+          name: "木材工厂",
+          output: [{ resource: "wood_plank", amount: 2 }],
+          input: { bread: 1, log: 1 },
+          time: 20,
+        },
+        wood_beam_workshop: {
+          name: "木梁工坊",
+          output: [{ resource: "wood_beam", amount: 2 }],
+          input: { iron_tool: 1, template: 1 },
+          time: 40,
+        },
+        stone_tool_factory: {
+          name: "石制工具厂",
+          output: [{ resource: "stone_tool", amount: 2 }],
+          input: { wood_plank: 1, stone: 1 },
+          time: 7,
+        },
+        iron_tool_factory: {
+          name: "铁制工具厂",
+          output: [{ resource: "iron_tool", amount: 2 }],
+          input: { iron_ingot: 1, stone_tool: 1 },
+          time: 10,
+        },
+        steel_tool_factory: {
+          name: "钢制工具厂",
+          output: [{ resource: "steel_tool", amount: 2 }],
+          input: { steel: 1, iron_tool: 1 },
+          time: 15,
+        },
+        wood_furniture_factory: {
+          name: "木制家具厂",
+          output: [{ resource: "wood_furniture", amount: 2 }],
+          input: { log: 1, stone_tool: 1 },
+          time: 15,
+        },
+        leather_furniture_factory: {
+          name: "皮质家具厂",
+          output: [{ resource: "leather_furniture", amount: 1 }],
+          input: { leather: 1, wood_furniture: 1 },
+          time: 15,
+        },
+        luxury_furniture_factory: {
+          name: "高档家具厂",
+          output: [{ resource: "luxury_furniture", amount: 1 }],
+          input: { diamond: 1, leather_furniture: 1 },
+          time: 25,
+        },
+        stone_factory: {
+          name: "石材厂",
+          output: [{ resource: "stone_material", amount: 2 }],
+          input: { stone: 1, stone_tool: 1 },
+          time: 25,
+        },
+        stone_processing_factory: {
+          name: "石材加工厂",
+          output: [{ resource: "stone_plate", amount: 2 }],
+          input: { iron_tool: 1, stone_material: 1 },
+          time: 40,
+        },
+        iron_smelter: {
+          name: "炼铁厂",
+          output: [{ resource: "iron_ingot", amount: 2 }],
+          input: { coal: 1, iron: 2 },
+          time: 15,
+        },
+        paper_mill: {
+          name: "造纸厂",
+          output: [{ resource: "paper", amount: 2 }],
+          input: { wood_plank: 1, iron_tool: 1 },
+          time: 30,
+        },
+        leather_factory: {
+          name: "皮革厂",
+          output: [{ resource: "leather", amount: 2 }],
+          input: { cow: 1, iron_tool: 1 },
+          time: 20,
+        },
+        glass_factory: {
+          name: "玻璃厂",
+          output: [{ resource: "glass", amount: 2 }],
+          input: { sand: 1, coal: 1 },
+          time: 25,
+        },
+        steel_smelter: {
+          name: "炼钢厂",
+          output: [{ resource: "steel", amount: 1 }],
+          input: { coal: 1, iron: 1 },
+          time: 20,
+        },
+        library: {
+          name: "图书馆",
+          output: [{ resource: "book", amount: 2 }],
+          input: { leather: 1, paper: 1, steel_tool: 1 },
+          time: 25,
+        },
+      };
+
+      const selectedOutputs = {};
+
+      function loadFacilityOptions() {
+        const facilitySelect = document.getElementById("facility");
+        for (let facility in facilities) {
+          const option = document.createElement("option");
+          option.value = facility;
+          option.text = facilities[facility].name;
+          facilitySelect.add(option);
+        }
+      }
+
+      function loadResourceOptions() {
+        const resourceOptions = {};
+        for (let key in facilities) {
+          facilities[key].output.forEach((output) => {
+            const resource = output.resource;
+            if (!resourceOptions[resource]) {
+              resourceOptions[resource] = [];
+            }
+            resourceOptions[resource].push({
+              facility: key,
+              amount: output.amount,
+              time: facilities[key].time,
+            });
+          });
+        }
+
+        const container = document.getElementById("resource-options");
+
+        for (let resource in resourceOptions) {
+          if (resourceOptions[resource].length > 1) {
+            const div = document.createElement("div");
+            div.style.marginBottom = "10px";
+            let resourceText = `<h3 style="display: inline;">${resource}：</h3>`;
+
+            resourceOptions[resource].forEach((option, index) => {
+              const radio = document.createElement("input");
+              radio.type = "radio";
+              radio.name = resource;
+              radio.value = option.facility;
+              if (index === 0) {
+                radio.checked = true;
+                selectedOutputs[resource] = option.facility;
+              }
+              radio.onclick = () =>
+                (selectedOutputs[resource] = option.facility);
+
+              const label = document.createElement("label");
+              label.innerHTML = `${facilities[option.facility].name}(${
+                option.time
+              }s:${option.amount}) `;
+              label.style.marginRight = "15px";
+              label.style.display = "inline";
+
+              div.appendChild(radio);
+              div.appendChild(label);
+            });
+            container.appendChild(div);
+          } else {
+            const option = resourceOptions[resource][0];
+            selectedOutputs[resource] = option.facility;
+          }
+        }
+      }
+
+      function calculateRequirements(facilityType, quantity, threshold = 0.01) {
+        const requirements = {};
+        const facility = facilities[facilityType];
+
+        for (let input in facility.input) {
+          // 每分钟所需的资源数量（保留小数）
+          const requiredAmount =
+            (facility.input[input] * quantity) / (facility.time / 60);
+
+          // 如果需求量低于阈值，忽略此需求，避免无限递归
+          if (requiredAmount < threshold) {
+            continue;
+          }
+
+          let supplierFacility = selectedOutputs[input] || null;
+
+          if (supplierFacility) {
+            const supplierOutput = facilities[supplierFacility].output.find(
+              (o) => o.resource === input
+            );
+            const supplierOutputPerMinute =
+              supplierOutput.amount / (facilities[supplierFacility].time / 60);
+            const supplierQuantity = requiredAmount / supplierOutputPerMinute;
+
+            // 累加需求量，保留小数
+            requirements[supplierFacility] =
+              (requirements[supplierFacility] || 0) + supplierQuantity;
+
+            // 递归计算上游设施需求，传递阈值
+            const subRequirements = calculateRequirements(
+              supplierFacility,
+              supplierQuantity,
+              threshold
+            );
+            for (let subKey in subRequirements) {
+              requirements[subKey] =
+                (requirements[subKey] || 0) + subRequirements[subKey];
+            }
+          }
+        }
+
+        return requirements;
+      }
+
+      function calculate() {
+        const facilityType = document.getElementById("facility").value;
+        const quantity = parseInt(document.getElementById("quantity").value);
+        const result = calculateRequirements(facilityType, quantity);
+
+        const resultBody = document.getElementById("resultBody");
+        resultBody.innerHTML = ""; // 清空表格内容
+
+        for (let facility in facilities) {
+          // 按 JSON 中的顺序输出
+          if (result[facility]) {
+            const total = result[facility];
+            const roundedTotal = Math.ceil(total);
+            const decimalPart = total.toFixed(2);
+
+            const row = document.createElement("tr");
+            const nameCell = document.createElement("td");
+            nameCell.textContent = facilities[facility].name;
+            const quantityCell = document.createElement("td");
+            quantityCell.textContent = roundedTotal;
+            const decimalCell = document.createElement("td");
+            decimalCell.textContent = decimalPart;
+
+            row.appendChild(nameCell);
+            row.appendChild(quantityCell);
+            row.appendChild(decimalCell);
+            resultBody.appendChild(row);
+          }
+        }
+      }
+
+      // 网页加载时动态生成设施选项和资源选项
+      window.onload = function () {
+        loadFacilityOptions();
+        loadResourceOptions();
+      };
+    </script>
+  </body>
+</html>
