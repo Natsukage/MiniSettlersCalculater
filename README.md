@@ -9,4 +9,6 @@ Mini Settlers 的简易生产计算器
 ## 使用
 所有代码包括css样式和设施产出列表全部在html文件中，直接用浏览器运行单文件即可。
 
+勾选的行会淡化显示，用于记录已完成状态
+
 ![Screenshot](Screenshot.webp)
