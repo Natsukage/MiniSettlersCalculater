@@ -1,82 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>生产规划计算器</title>
     <style>
-      body {
-        font-family: Arial, sans-serif;
-      }
-      h1 {
-        font-size: 24px;
-        margin-bottom: 20px;
-      }
-      #resource-options {
-        margin-bottom: 20px;
-      }
-      label {
-        cursor: pointer;
-      }
-      input[type="radio"] {
-        margin-right: 5px;
-      }
-      select,
-      input[type="number"],
-      button {
-        margin-right: 10px;
-        padding: 5px;
-        font-size: 16px;
-      }
-      ul {
-        list-style-type: none;
-        padding: 0;
-      }
-      ul li {
-        margin-bottom: 5px;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 20px;
-      }
-      table,
-      th,
-      td {
-        border: 1px solid black;
-      }
-      th,
-      td {
-        padding: 8px;
-        text-align: left;
-      }
-      th {
-        background-color: #f2f2f2;
-      }
+        body {
+            font-family: Arial, sans-serif;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        #resource-options {
+            margin-bottom: 20px;
+        }
+        label {
+            cursor: pointer;
+        }
+        input[type="radio"] {
+            margin-right: 5px;
+        }
+        select, input[type="number"], button {
+            margin-right: 10px;
+            padding: 5px;
+            font-size: 16px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        ul li {
+            margin-bottom: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .checkbox-cell {
+            width: 40px; /* 固定列宽 */
+            text-align: center; /* 居中显示 */
+            cursor: pointer; /* 鼠标悬停时显示为手形 */
+        }
+        .checkbox-cell input {
+            transform: scale(1.5); /* 增大checkbox尺寸 */
+        }
     </style>
-  </head>
-  <body>
-    <h1>生产规划计算器</h1>
+</head>
 
-    <div id="resource-options"></div>
+<body>
+  <h1>生产规划计算器</h1>
 
-    <label for="facility">选择设施:</label>
-    <select id="facility"></select>
-    <label for="quantity">输入数量:</label>
-    <input type="number" id="quantity" value="1" />
-    <button onclick="calculate()">计算</button>
+  <div id="resource-options"></div>
 
-    <h2>需求设施:</h2>
-    <table id="resultTable">
+  <label for="facility">选择设施:</label>
+  <select id="facility"></select>
+  <label for="quantity">输入数量:</label>
+  <input type="number" id="quantity" value="1">
+  <button onclick="calculate()">计算</button>
+
+  <h2>需求设施:</h2>
+  <table id="resultTable">
       <thead>
-        <tr>
-          <th>建筑名</th>
-          <th>数量</th>
-          <th>原始小数</th>
-        </tr>
+          <tr>
+              <th class="checkbox-cell"></th> <!-- 复选框列 -->
+              <th>建筑名</th>
+              <th>数量</th>
+              <th>原始小数</th>
+              <th>生产能力</th>
+          </tr>
       </thead>
       <tbody id="resultBody"></tbody>
-    </table>
+  </table>
 
     <script>
       const facilities = {
@@ -452,35 +458,85 @@
       }
 
       function calculate() {
-        const facilityType = document.getElementById("facility").value;
-        const quantity = parseInt(document.getElementById("quantity").value);
-        const result = calculateRequirements(facilityType, quantity);
+            const facilityType = document.getElementById("facility").value;
+            const quantity = parseInt(document.getElementById("quantity").value);
+            const result = calculateRequirements(facilityType, quantity);
 
-        const resultBody = document.getElementById("resultBody");
-        resultBody.innerHTML = ""; // 清空表格内容
+            const resultBody = document.getElementById("resultBody");
+            resultBody.innerHTML = ""; // 清空表格内容
 
-        for (let facility in facilities) {
-          // 按 JSON 中的顺序输出
-          if (result[facility]) {
-            const total = result[facility];
-            const roundedTotal = Math.ceil(total);
-            const decimalPart = total.toFixed(2);
+            for (let facility in facilities) { // 按 JSON 中的顺序输出
+                if (result[facility]) {
+                    const total = result[facility];
+                    const roundedTotal = Math.ceil(total);
+                    const decimalPart = total.toFixed(2);
 
-            const row = document.createElement("tr");
-            const nameCell = document.createElement("td");
-            nameCell.textContent = facilities[facility].name;
-            const quantityCell = document.createElement("td");
-            quantityCell.textContent = roundedTotal;
-            const decimalCell = document.createElement("td");
-            decimalCell.textContent = decimalPart;
+                    // 获取设施数据
+                    const facilityData = facilities[facility];
+                    const output = facilityData.output[0];
+                    const outputPerMinute = output.amount / (facilityData.time / 60);
 
-            row.appendChild(nameCell);
-            row.appendChild(quantityCell);
-            row.appendChild(decimalCell);
-            resultBody.appendChild(row);
-          }
+                    // 计算每分钟的总消耗
+                    const totalInputPerMinute = Object.entries(facilityData.input).reduce(
+                        (sum, [inputResource, inputAmount]) => {
+                            return sum + inputAmount / (facilityData.time / 60);
+                        },
+                        0
+                    );
+
+                    // 生成输入输出的显示摘要
+                    const inputSummary = Object.entries(facilityData.input)
+                        .map(([inputResource, inputAmount]) => {
+                            return `${(inputAmount / (facilityData.time / 60)).toFixed(1)} ${inputResource}`;
+                        })
+                        .join(" + ");
+                    const outputSummary = `${outputPerMinute.toFixed(1)} ${output.resource}`;
+
+                    // 比较产出与消耗
+                    let color = "black";
+                    if (outputPerMinute > totalInputPerMinute) {
+                        color = "darkred"; // 产出大于消耗，深红色
+                    } else if (outputPerMinute < totalInputPerMinute) {
+                        color = "blue"; // 产出小于消耗，蓝色
+                    }
+
+                    const row = document.createElement("tr");
+
+                    // 添加复选框
+                    const checkboxCell = document.createElement("td");
+                    checkboxCell.className = "checkbox-cell";
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.onclick = function() {
+                        if (checkbox.checked) {
+                            row.style.opacity = "0.25"; // 变淡
+                        } else {
+                            row.style.opacity = "1"; // 恢复正常
+                        }
+                    };
+                    checkboxCell.appendChild(checkbox);
+                    row.appendChild(checkboxCell);
+
+                    const nameCell = document.createElement("td");
+                    nameCell.textContent = facilities[facility].name;
+                    const quantityCell = document.createElement("td");
+                    quantityCell.textContent = roundedTotal;
+                    const decimalCell = document.createElement("td");
+                    decimalCell.textContent = decimalPart;
+
+                    const productionCell = document.createElement("td");
+                    productionCell.textContent = `${inputSummary} -> ${outputSummary}`;
+                    productionCell.style.color = color;
+
+                    row.appendChild(nameCell);
+                    row.appendChild(quantityCell);
+                    row.appendChild(decimalCell);
+                    row.appendChild(productionCell);
+                    resultBody.appendChild(row);
+                }
+            }
         }
-      }
+
 
       // 网页加载时动态生成设施选项和资源选项
       window.onload = function () {
