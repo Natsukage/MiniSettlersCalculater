@@ -63,25 +63,27 @@
       }
     </style>
   </head>
-
   <body>
     <h1>生产规划计算器</h1>
 
     <div id="resource-options"></div>
 
+    <h2>需求列表:</h2>
     <label for="facility">选择设施:</label>
     <select id="facility"></select>
     <label for="quantity">输入数量:</label>
     <input type="number" id="quantity" value="1" />
-    <button onclick="calculate()">计算</button>
+    <button onclick="addFacility()">添加建筑</button>
 
-    <h2>需求设施:</h2>
+    <ul id="demandList"></ul>
+
+    <h2>总需求设施:</h2>
     <table id="resultTable">
       <thead>
         <tr>
           <th class="checkbox-cell"></th>
           <!-- 复选框列 -->
-          <th>建筑</th>
+          <th>建筑名</th>
           <th>数量</th>
           <th>原始小数</th>
           <th>每分钟产能</th>
@@ -91,6 +93,7 @@
     </table>
 
     <script>
+      const demandList = []; // 存储添加的建筑及数量
       const facilities = {
         住房LV1: {
           output: { 人口: 24 },
@@ -323,6 +326,7 @@
           time: 25,
         },
       };
+
       const selectedOutputs = {};
 
       function loadFacilityOptions() {
@@ -368,8 +372,7 @@
                 radio.checked = true;
                 selectedOutputs[resource] = option.facility;
               }
-              radio.onclick = () =>
-                (selectedOutputs[resource] = option.facility);
+              radio.onclick = () => (selectedOutputs[resource] = option.facility);
 
               const label = document.createElement("label");
               label.innerHTML = `${option.facility}(${option.time}s:${option.amount}) `;
@@ -387,14 +390,26 @@
         }
       }
 
+      function addFacility() {
+        const facilityType = document.getElementById("facility").value;
+        const quantity = parseInt(document.getElementById("quantity").value);
+
+        demandList.push({ facilityType, quantity });
+
+        const demandListElement = document.getElementById("demandList");
+        const listItem = document.createElement("li");
+        listItem.textContent = `${facilityType} - ${quantity}个`;
+        demandListElement.appendChild(listItem);
+        calculate();
+      }
+
       function calculateRequirements(facilityType, quantity, threshold = 0.01) {
         const requirements = {};
         const facility = facilities[facilityType];
 
         for (let input in facility.input) {
           // 每分钟所需的资源数量（保留小数）
-          const requiredAmount =
-            (facility.input[input] * quantity) / (facility.time / 60);
+          const requiredAmount = (facility.input[input] * quantity) / (facility.time / 60);
 
           // 如果需求量低于阈值，忽略此需求，避免无限递归
           if (requiredAmount < threshold) {
@@ -404,25 +419,17 @@
           let supplierFacility = selectedOutputs[input] || null;
 
           if (supplierFacility) {
-            const supplierOutputAmount =
-              facilities[supplierFacility].output[input];
-            const supplierOutputPerMinute =
-              supplierOutputAmount / (facilities[supplierFacility].time / 60);
+            const supplierOutputAmount = facilities[supplierFacility].output[input];
+            const supplierOutputPerMinute = supplierOutputAmount / (facilities[supplierFacility].time / 60);
             const supplierQuantity = requiredAmount / supplierOutputPerMinute;
 
             // 累加需求量，保留小数
-            requirements[supplierFacility] =
-              (requirements[supplierFacility] || 0) + supplierQuantity;
+            requirements[supplierFacility] = (requirements[supplierFacility] || 0) + supplierQuantity;
 
             // 递归计算上游设施需求，传递阈值
-            const subRequirements = calculateRequirements(
-              supplierFacility,
-              supplierQuantity,
-              threshold
-            );
+            const subRequirements = calculateRequirements(supplierFacility, supplierQuantity, threshold);
             for (let subKey in subRequirements) {
-              requirements[subKey] =
-                (requirements[subKey] || 0) + subRequirements[subKey];
+              requirements[subKey] = (requirements[subKey] || 0) + subRequirements[subKey];
             }
           }
         }
@@ -431,44 +438,42 @@
       }
 
       function calculate() {
-        const facilityType = document.getElementById("facility").value;
-        const quantity = parseInt(document.getElementById("quantity").value);
-        const result = calculateRequirements(facilityType, quantity);
+        const totalRequirements = {};
+
+        demandList.forEach(({ facilityType, quantity }) => {
+          const result = calculateRequirements(facilityType, quantity);
+          for (let facility in result) {
+            totalRequirements[facility] = (totalRequirements[facility] || 0) + result[facility];
+          }
+        });
 
         const resultBody = document.getElementById("resultBody");
         resultBody.innerHTML = ""; // 清空表格内容
 
         for (let facility in facilities) {
           // 按 JSON 中的顺序输出
-          if (result[facility]) {
-            const total = result[facility];
+          if (totalRequirements[facility]) {
+            const total = totalRequirements[facility];
             const roundedTotal = Math.ceil(total);
             const decimalPart = total.toFixed(2);
 
             // 获取设施数据
             const facilityData = facilities[facility];
             const outputResource = Object.keys(facilityData.output)[0];
-            const outputPerMinute =
-              facilityData.output[outputResource] / (facilityData.time / 60);
+            const outputPerMinute = facilityData.output[outputResource] / (facilityData.time / 60);
 
             // 计算每分钟的总消耗
-            const totalInputPerMinute = Object.entries(
-              facilityData.input
-            ).reduce((sum, [inputResource, inputAmount]) => {
+            const totalInputPerMinute = Object.entries(facilityData.input).reduce((sum, [inputResource, inputAmount]) => {
               return sum + inputAmount / (facilityData.time / 60);
             }, 0);
 
             // 生成输入输出的显示摘要
             const inputSummary = Object.entries(facilityData.input)
               .map(([inputResource, inputAmount]) => {
-                return `${(inputAmount / (facilityData.time / 60)).toFixed(
-                  1
-                )} ${inputResource}`;
+                return `${(inputAmount / (facilityData.time / 60)).toFixed(1)} ${inputResource}`;
               })
               .join(" + ");
-            const outputSummary = `${outputPerMinute.toFixed(
-              1
-            )} ${outputResource}`;
+            const outputSummary = `${outputPerMinute.toFixed(1)} ${outputResource}`;
 
             // 比较产出与消耗
             let color = "black";
